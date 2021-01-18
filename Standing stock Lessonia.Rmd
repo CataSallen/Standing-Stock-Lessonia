@@ -1,0 +1,506 @@
+---
+title: "Productividad Lessonia"
+author: "Catalina Ruz"
+date: "29 de diciembre de 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning=FALSE, error = F, message = F)
+library(tidyverse) #metalibrary para ordenar 
+library(knitr)
+library(gridExtra)
+library(kableExtra)
+library(stringr)
+library(readxl)
+```
+
+## Relación Talla-Peso 
+
+Con datos obtenidos en 5 AMERB desde los 23º a los 36ºS, se estableció la relación entre el Diámetro máximo del disco y el peso del alga.
+Con esta relación se estimaron los parámetros para establecer la relación alométrica de Biomasa dada por la ecuación:
+
+$$
+  \begin{aligned}
+  B = aL^b 
+  \end{aligned}
+$$ 
+
+
+
+```{r dfTallaPeso, echo=FALSE}
+
+Peso<-read.csv("pesoalgasIFOP.csv") %>% filter(Especie == "Lessonia trabeculata") %>% mutate(logPeso= log(peso), logDisco= log(Diametro.extraida)) %>% mutate(Latitude =rep("", times=length(AMERB), Longitud= rep("", times= length(AMERB))))
+Peso$AMERB <- gsub("Quintay sector B", "Quintay protected", Peso$AMERB)
+Peso$AMERB <- gsub("Quintay sector A", "Quintay protected", Peso$AMERB)
+
+
+conQ= (Peso$AMERB== "Quintay protected")
+Peso$Latitude[conQ] = "-33.185000"
+Peso$Longitude[conQ] = "-71.691650"
+
+conC= (Peso$AMERB== "Cobquecura")
+Peso$Latitude[conC] = "-36.164765"
+Peso$Longitude[conC] = "-72.816642"
+
+conV= (Peso$AMERB== "Ventana")
+Peso$Latitude[conV] = "-32.735717"
+Peso$Longitude[conV] = "-71.503350"
+
+conVi= (Peso$AMERB== "Los Vilos sector C")
+Peso$Latitude[conVi] = "-31.934100"
+Peso$Longitude[conVi] = "-71.517767"
+
+conCa= (Peso$AMERB== "Carrizal Bajo")
+Peso$Latitude[conCa] = "-28.040500"
+Peso$Longitude[conCa] = "-71.152083"
+
+conPY= (Peso$AMERB== "Punta el Yeso")
+Peso$Latitude[conPY] = "-23.415222"
+Peso$Longitude[conPY] = "-70.600943"
+
+```
+
+```{r plotTallaPeso}
+
+ggplot(Peso, aes(x=Diametro.extraida , y=peso, group=Latitude))+ geom_point(aes(color=Latitude))+ geom_smooth(method= "lm", formula = Diametro.extraida~ log(peso), linetype=1, aes(color="model3"))
+
+ggplot(Peso, aes(x=logDisco , y=logPeso, group=Latitude))+ geom_point(aes(color=Latitude))
+
+
+```
+
+```{r GLMTallaPeso}
+modelTallaPeso<-glm(peso~I(log(Diametro.extraida))+AMERB, family = quasipoisson, data=Peso)
+summary(modelTallaPeso)
+anova(modelTallaPeso, test = "F")
+
+```
+
+
+
+##Bases de datos Lessonia trabeculata ordenadas y estandarizadas
+```{r 2012-2014}
+F11110351<-read.csv("2012-2014.csv") %>% filter(Subset == "Kelp") %>% select(-c(Subset,Transects,Temperature, Visbility,DepthRange,Holdfast.Use,Blade.Use,Cover, allometric, a,b, Biomass)) %>% mutate(DF= rep("F11110351", times= length(Site)), Stipes= rep("NA", times=length(Site)), Length=rep("NA", times=length(Site)))
+F11110351$Site<-as.character(F11110351$Site)
+
+##cambio de nombre a un sitio para std con otras bd
+F11110351$Site <- gsub("LosMolles", "Los Molles protected", F11110351$Site)
+condYF12= (F11110351$Season== "Fall2012")
+F11110351$Year[condYF12] = "2012"
+condYS12= (F11110351$Season== "Spring2012")
+F11110351$Year[condYS12] = "2012"
+condYF13= (F11110351$Season== "Fall2013")
+F11110351$Year[condYF13] = "2013"
+condYS13= (F11110351$Season== "Spring2013")
+F11110351$Year[condYS13] = "2013"
+condYSu14= (F11110351$Season== "Summer 2014")
+F11110351$Year[condYSu14] = "2014"
+```
+
+```{r 2015}
+
+F1140841<-read.csv("2015.csv") %>% filter(Subset == "kelp") %>% select(-c(Subset,Temperature, Visbility, Holdfast.Use,Blade.Use,Cover...,X,Biomass)) %>% mutate(DF= rep("F1140841", times= length(Site)), Length=rep("NA", times=length(Site)), Year=rep("2015", times=length(Site))) %>% rename(Stipes= "no..stipes", Size= "Size.cm.", Station="station")
+
+F1140841$Site <- gsub("Quintay", "QuintayAMERB", F1140841$Site)
+F1140841$Site <- gsub("El Franc\x8es", "TotoralilloOA", F1140841$Site)
+F1140841$Site <- gsub("Algarrobo", "AlgarroboOA", F1140841$Site)
+F1140841$Season <- gsub("summer 2014", "summer2014", F1140841$Season)
+#Rellenar coordenadas
+
+cond1= (F1140841$Site== "AlgarroboOA")
+F1140841$Latitude[cond1] = "-33.36483661"
+F1140841$Longitude[cond1] = "-71.69101847"
+
+cond2= (F1140841$Site== "TotoralilloOA")
+F1140841$Latitude[cond2] = "-30.0939569"
+F1140841$Longitude[cond2] = "-71.37972619"
+
+cond3= (F1140841$Site== "QuintayAMERB")
+F1140841$Latitude[cond3] = "-33.19193931"
+F1140841$Longitude[cond3] = "-71.70033633"
+
+```
+
+```{r 2015-2017}
+F1151094<-read.csv("2015-2017.csv") %>% filter(Habitat == "kelp") %>% mutate(date=Date) %>% separate(date, into= c("Day","Month", "Year"), sep="-") %>% select(-c(Survey,Habitat,Day, Month,Sampler, High.1,High.2, Mean.High,comentario,Data_Entry,Num_parches)) %>%
+  mutate(DF=rep("F1151094", times=611), 
+         Season=rep("NA", times=length(Site)), 
+         Latitude=rep("NA", times=length(Site)), 
+         Longitude=rep("NA", times=length(Site)), 
+         Phase=rep("NA", times=length(Site))) %>% rename(Series ="serie",  Station= "Station.replicate", Replicate= "Pseudoreplicate",Size= "Width") 
+
+#Reemplazamos en la columna año 15 x 2015
+F1151094$Year[F1151094$Year=="15"]= "2015"
+F1151094$Year[F1151094$Year=="16"]= "2016"
+F1151094$Year[F1151094$Year=="17"]= "2017"
+#Cambio de nombre de los sitios
+F1151094$Site[F1151094$Site == "Quintay "] = "Quintay"
+F1151094$Site[F1151094$Site == "LosMolles"] = "Los Molles"
+F1151094$Site <- paste(F1151094$Site,F1151094$Exposure)
+##Rellenamos las columnas de latitud y longitud
+condicion1= (F1151094$Site== "Quintay exposed")
+condicion2= (F1151094$Site== "Quintay protected")
+condicion5= (F1151094$Site== "Quintay protected")
+condicion3= (F1151094$Site== "Los Molles exposed")
+condicion4= (F1151094$Site== "Los Molles protected")
+#Completamos las coordenadas
+F1151094$Latitude[condicion1] = "-33.143806"
+F1151094$Longitude[condicion1]= "-71.711944"
+F1151094$Latitude[condicion2] = "-33.19193931"
+F1151094$Longitude[condicion2] = "-71.70033633"
+F1151094$Latitude[condicion3] = "-32.23857"
+F1151094$Longitude[condicion3] = "-71.52684"
+F1151094$Latitude[condicion4] = "-32.230642"
+F1151094$Longitude[condicion4] = "-71.523598"
+
+condicion5=(F1151094$Zone =="shallow") & (F1151094$Transect =="1")
+F1151094$Transect[condicion5] = "4"
+condicion6=(F1151094$Zone =="shallow") & (F1151094$Transect =="2")
+F1151094$Transect[condicion6] = "5"
+condicion7=(F1151094$Zone =="shallow") & (F1151094$Transect =="3")
+F1151094$Transect[condicion7] = "6"
+F1151094std= F1151094 %>% select(-c(Exposure,Zone)) %>% mutate(Season=rep("NA", times=length(Site)))
+F1151094std$Site <- gsub("Quintay protected", "QuintayAMERB", F1151094std$Site)
+```
+
+```{r Biomasa 2012-2017}
+Alldata= rbind(F11110351,F1140841,F1151094std)
+Alldata$Size<-as.numeric(Alldata$Size)
+Alldata$Abundance<-as.numeric(Alldata$Abundance)
+#Según de B= 0.0026*L^(2.12524)
+Alldata$Biomass= (0.0026)*((Alldata$Size)^(2.12524))
+
+#Biomasa por sitio y temporada 2012-2013
+#suma de algas por cuadrantes
+
+Quad<-Alldata %>% filter(DF=="F11110351", Season !="Summer 2014") %>% group_by(Year, Season,Site,Latitude,Transect, Station, Replicate) %>% summarise(Abun= sum(Abundance),Biomassm2= sum(Biomass))
+#promedio de los cuadrantes por sitio
+Site<-Quad %>% group_by(Year, Season, Site, Latitude) %>% summarise(SumaBiomasaQ=mean(Biomassm2), se= sd(Biomassm2)/sqrt(length(Transect)))
+Site$Season<- factor(Site$Season, levels = c("Fall2012", "Spring2012","Fall2013", "Spring2013"))
+```
+
+```{r 2018, echo=FALSE}
+#DF de los cuadrantes submareales 
+ifop18<-read.csv("2018.csv") %>% select(-c(Dia,Mes, Presencia,Abundancia.en.alga,Abundancia.en.sustrato,Chico..total,Chico.en.alga,Chico.en.sustrato,Mediano.total,Mediano.en.alga,Mediano.en.sustrato,Grande.total,Grande.en.alga,Grande.en.sustrato,Observaciones,Muestreado.por,Anotado.por,Ingresado.por)) %>% rename(Series="Serie", Date= "Fecha", Year= "Ano", Site= "AMERB", Transect="Transecto", Replicate="Cuadrante", Depth="Profundidad..m.",Group="Tipo.de.especie", Species="Especie", Abundance="Abundancia.total",Size="Diametro.del.disco", Stipes="No.estipes",Length = "Largo") %>% mutate(Season=rep("NA", times=length(Series)), DF= rep("ifop2018", times= length(Series)), Station=replicate(1, Replicate),Phase= rep("NA", times=length(Series)),Frondosity= rep("NA", times=length(Series))) 
+
+
+##Cambio en el nombre de los sitios
+ifop18$Site <- gsub("Quintay sector B", "Quintay sur", ifop18$Site)
+ifop18$Site <- gsub("Quintay sector A", "QuintayAMERB", ifop18$Site)
+ifop18$Site <- gsub("Cha\x96aral de aceituno sector C", "Chanaral AMERB", ifop18$Site)
+ifop18$Site <- gsub("Reserva Cha\x96aral de aceituno", "Chanaral Reserva", ifop18$Site)
+ifop18$Site <- gsub("Reserva Cha\x96aral de Aceituno", "Chanaral Reserva", ifop18$Site)
+ifop18$Site <- gsub("Punta El Yeso", "Punta el Yeso", ifop18$Site)
+ifop18$Group <- gsub("Macroalga", "Macroalga parda", ifop18$Group)
+ifop18$Group <- gsub("Macroalga parda parda", "Macroalga parda", ifop18$Group)
+ifop18$Site<-as.factor(ifop18$Site)
+ifop18$Transect<-as.integer(ifop18$Transect)
+
+###Sin embargo, para findes de gráfica, las Coordenadas serán incluidas manualmente en la base de datos ifop18
+
+condicion8= (ifop18$Site== "Carrizal bajo")
+ifop18$Longitude[condicion8]="-71.152083"
+ifop18$Latitude[condicion8]="-28.040500" 
+  
+condicion9= (ifop18$Site== "Chanaral AMERB")
+ifop18$Latitude[condicion9]="-29.132117" 
+ifop18$Longitude[condicion9]="-71.489500"
+
+condicion10= (ifop18$Site== "Cobquecura")
+ifop18$Latitude[condicion10]="-36.164765" 
+ifop18$Longitude[condicion10]="-72.816642"
+
+condicion11= (ifop18$Site== "ECIM")
+ifop18$Latitude[condicion11]="-33.504383" 
+ifop18$Longitude[condicion11]="-71.633250"
+  
+condicion12= (ifop18$Site== "Los Vilos sector C")
+ifop18$Latitude[condicion12]="-31.934100"
+ifop18$Longitude[condicion12]="-71.517767"
+  
+condicion13= (ifop18$Site== "Punta el Yeso")
+ifop18$Latitude[condicion13]="-23.415222" 
+ifop18$Longitude[condicion13]="-70.600943"
+
+condicion14= (ifop18$Site== "QuintayAMERB")
+ifop18$Latitude[condicion14]="-33.185000" 
+ifop18$Longitude[condicion14]="-71.691650"
+
+condicion15= (ifop18$Site== "Quintay sur")
+ifop18$Latitude[condicion15]="-33.204333" 
+ifop18$Longitude[condicion15]="-71.703750"
+
+condicion16= (ifop18$Site== "Chanaral Reserva")
+ifop18$Latitude[condicion16]="-29.025167" 
+ifop18$Longitude[condicion16]="-71.565917"
+
+condicion17= (ifop18$Site== "Ventanas")
+ifop18$Latitude[condicion17]="-32.735717" 
+ifop18$Longitude[condicion17]="-71.503350"
+
+```
+
+```{r 2019, echo=FALSE}
+
+#DF de los cuadrantes submareales 
+ifop19<-read.csv("2019.csv") %>% select(-c(Dia,Mes,Metros.del.transecto,Abundancia.herbivoros,Frondosidad,Observaciones,Muestreado.por,Anotado.por,Ingresado.por)) %>% rename(Series="Serie",Year="Ano", Date= "Fecha", Site= "AMERB", Transect="Transecto", Replicate="Cuadrante", Depth="Profundidad",Group="Tipo.de.especie", Species="Especie", Abundance="Abundancia.Huiro",Size="Diametro.del.disco", Stipes="estipes",Length = "Largo") %>% mutate(Season=rep("NA", times=length(Series)), DF= rep("ifop2019", times= length(Series)),Station=replicate(1, Replicate),Phase= rep("NA", times=length(Series)),Frondosity= rep("NA", times=length(Series))) ##agregamos Station que en este muestreo es lo mismo que nuestras unidaddes muestreales que son llamadas por la variable Replicate
+
+ifop19$Size<-as.numeric(ifop19$Size)
+ifop19$Site <- gsub("Quintay B", "Quintay sur", ifop19$Site)
+ifop19$Site <- gsub("Quintay A", "QuintayAMERB", ifop19$Site)
+
+##Igual que antes, para findes de gráfica, las Coordenadas fueron incluidas manualmente en ifop19 
+
+condicion18= (ifop19$Site== "Ventanas")
+ifop19$Latitude[condicion18]="-32.735717" 
+ifop19$Longitude[condicion18]="-71.503350"
+condicion19= (ifop19$Site== "Cobquecura")
+ifop19$Latitude[condicion19]="-36.164765" 
+ifop19$Longitude[condicion19]="-72.816642"
+condicion20= (ifop19$Site== "QuintayAMERB")
+ifop19$Latitude[condicion20]="-33.185000" 
+ifop19$Longitude[condicion20]="-71.691650" 
+condicion21= (ifop19$Site== "Quintay sur")
+ifop19$Latitude[condicion21]="-33.204333" 
+ifop19$Longitude[condicion21]="-71.703750"
+
+
+ifop2019<-ifop19 %>% mutate(Abundance = str_replace(Abundance, "-","NA"))##[1] 1  0   -, tenemos un - que debería ser un NA por que la abundancia no aplica a los datos que presentan este simbolo (animales).
+```
+
+```{r Biomasa 2018-2019, echo=FALSE}
+#unimos los datos 2018 y 2019
+IFOP1819<- rbind(ifop18,ifop2019)
+summary(IFOP1819)
+Ltrabeculata<-IFOP1819 %>% filter (Group=="Macroalga parda") %>% filter(Species !="Lessonia berteroana"& Species !="Macrocystis pyrifera") %>% mutate(Biomass=(0.0026)*((Size)^(2.12524))) %>%  mutate(Biomass=replace_na(Biomass, 0)) %>%  mutate(Size= case_when(Abundance=="0"~ "0", TRUE ~ as.character(Size)), Stipes= case_when(Abundance=="0"~ "0", TRUE ~ as.character(Stipes)), Length= case_when(Abundance=="0"~ "0", TRUE ~ as.character(Length)))
+
+Ltrabeculata$Abundance<-as.numeric(Ltrabeculata$Abundance)
+Ltrabeculata$Size<-as.numeric(Ltrabeculata$Size)
+Ltrabeculata$Stipes<-as.numeric(Ltrabeculata$Stipes)
+Ltrabeculata$Length<-as.numeric(Ltrabeculata$Length)
+Ltrabeculata$Depth<-as.numeric(Ltrabeculata$Depth)
+
+Quad1819<-Ltrabeculata %>%  group_by(DF,Year,Site,Latitude,Transect, Replicate) %>% summarise(Depth=mean(Depth), Size=mean(Size), Biomassm2= sum(Biomass), Abm2=sum(Abundance),Stipes=mean(Stipes), Length=mean(Length))
+
+Biomasa1819<- Quad1819 %>% group_by(Year, Site,Latitude) %>% summarise(B= mean(Biomassm2) , se= sd(Biomassm2)/sqrt(length(Transect)))
+Biomasa18<-Biomasa1819 %>% filter(Year=="2018") %>% select(c(Site, Latitude,B,se))
+
+```
+
+
+##Variación latitudinal de la biomasa
+```{r plot Biomasa 2012-2013}
+
+Latvar1213<- ggplot(Site, aes(x=Latitude, y=SumaBiomasaQ, group=Season))+ geom_line(aes(color=Season))+ geom_point(aes(color=Season, shape=Year),size = 3)+ ggtitle('Biomasa Lessonia trabeculata 2012-2013')+
+ labs(x= "Sitios" ,y="Biomasa/m2")+ 
+geom_errorbar(aes(ymin=SumaBiomasaQ-se, ymax= SumaBiomasaQ+se,color=factor(Season)),width=.2,stat = "identity",position = "identity")+ theme_classic()#+facet_wrap(Season~., ncol=1, nrow = 4)
+Latvar1213
+
+
+```
+
+```{r plot Biomasa 2018}
+
+LATvar18<-ggplot(data=Biomasa18, aes(x=Latitude, y=B, group=Year, colour=Year)) +
+    geom_line(colour = "black") +
+    geom_point(aes(color = Year),colour = "black")+
+    geom_errorbar(aes(ymin=B-se, ymax= B+se),width=.2,position=position_dodge(.9),colour= "black")+
+    theme_classic()+
+    ggtitle('Biomasa Lessonia trabeculata 2018') +
+    labs(y="Biomasa/m2", x="Site")
+LATvar18
+
+  
+```
+ 
+```{r plot Biomasa 2018-2019}
+
+Biomasa1819b<-Quad1819 %>% filter(Site=="Ventanas" | Site =="Quintay protected" | Site=="Quintay sur" | Site=="Cobquecura" ) %>% group_by(DF, Site,Latitude) %>% summarise(B= mean(Biomassm2) , se= sd(Biomassm2)/sqrt(length(Transect)))
+
+
+Biomasa1819bplot<-ggplot(Biomasa1819b, aes(x=fct_relevel(Site, "Ventanas","Quintay protected","Quintay sur","Cobquecura"), y=B, fill= DF)) + geom_bar(position = "dodge", stat = "identity", size =.2)+scale_fill_hue(l=40, c=35)+ 
+labs(x= "Sitios" ,y="Biomasa Kg/m2", fill="Año")+ggtitle('Biomasa Lessonia trabeculata 2018-2019')+
+geom_errorbar(aes(ymin=B-se, ymax= B+se),width=.2,
+position=position_dodge(.9))+ theme_classic()
+Biomasa1819bplot
+
+```
+
+```{r GLM}
+
+##GLM 2012-2013 
+model1213<-glm(Biomassm2~Site*Season, family= quasipoisson, data=Quad)
+summary(model1213)
+anova(model1213, test = "F")
+#GLM 2018- 2019
+model2<-glm(B~Site+DF, family= quasipoisson, data=Biomasa1819b)##Identificar qué formula se debe hacer (+ o *)
+summary(model2)
+anova(model2, test = "F")
+
+```
+
+##Biomasa y Herbívoros 
+
+```{r Herbivoros}
+##Base de datos del IFOP se seleccionaron los herbívoros y Lessonia del año 2018
+HerbivorosAlgas<-IFOP1819 %>% filter(Year=="2018", Species=="Tetrapygus niger" | Species =="Lessonia trabeculata" | Species=="Tegula tridentata" | Species=="Taliepus marginatus" | Species=="Loxechinus albus" | Species=="Taliepus sp" | Species== "Fissurella cumingii" | Species=="Tegula quadricostata" | Species=="FIssurella maxima" | Species== "Fissurella latimarginata" | Species=="Taliepus sp." | Species== "Taliepus dentatus"| Species=="Tegula atra" | Species=="Fissurella spp." | Species=="Fissurella costata") %>% mutate(Functional.Group= case_when(Species == "Lessonia trabeculata" ~ "Primary producers", TRUE ~  "Herbivore"), Biomasa=(0.0026)*((Size)^(2.12524))) %>% mutate(Biomasa=replace_na(Biomasa, 0)) %>% select(Site,Latitude, Transect, Replicate, Functional.Group, Species, Abundance, Biomasa)
+
+##todas las fisurellas serán fisurellas spp.
+HerbivorosAlgas$Species <- gsub("Fissurella costata", "Fissurella spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Species <- gsub("Fissurella latimarginata", "Fissurella spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Species <- gsub("Fissurella cumingii", "Fissurella spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Species <- gsub("FIssurella maxima", "Fissurella spp.", HerbivorosAlgas$Species)
+
+##todas las Taliepus serán Taliepus spp.
+HerbivorosAlgas$Species <- gsub("Taliepus sp.", "Taliepus spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Species <- gsub("Taliepus dentatus", "Taliepus spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Species <- gsub("Taliepus marginatus", "Taliepus spp.", HerbivorosAlgas$Species)
+HerbivorosAlgas$Abundance<-as.numeric(HerbivorosAlgas$Abundance)
+
+
+```
+
+```{r plot herbivoros}
+
+Herbivoros<-HerbivorosAlgas %>% filter(Functional.Group=="Herbivore") %>% group_by(Site, Latitude, Transect, Replicate, Species) %>% summarise(Abun=sum(Abundance))
+Herbsp<-rep %>% group_by(Site, Latitude, Species) %>% summarise(meanHerb=mean(Abun))
+
+#grafico sp de herbivoros 
+ggplot(Herbsp, aes(x=fct_relevel(Site, "Punta el Yeso",
+"Carrizal bajo", "Chanaral Reserva","Chanaral AMERB", "Los Vilos sector C","Ventanas","QuintayAMERB","Quintay sur","ECIM","Cobquecura"), y=meanHerb, fill=Species))+ geom_bar(stat="identity",position= "fill")+
+  labs(x= "Sitios" ,y="Abundancia m-2") + scale_fill_brewer()+theme_classic()
+
+```
+
+```{r correlaciones Alga-Herb}
+
+###Calculo la biomasa de Algas por cuadrante  
+AlgaQuad<-HerbivorosAlgas %>% filter(Functional.Group=="Primary producers") %>% group_by(Site, Latitude,Transect, Replicate) %>% summarise(BiomasaLessonia=sum(Biomasa))
+
+
+### Calculo los herbivoros totales por cuadrante
+herbQuad<- Herbivoros %>% filter(Abun < 100 ) %>% group_by(Site, Transect, Replicate) %>% summarise(AbHerb= sum(Abun)) 
+
+###Juntamos datos para las correlaciones 
+correlacion1<-full_join(AlgaQuad,herbQuad) %>% 
+  mutate_at(c(5:6), ~replace(., is.na(.), 0))
+
+#Correlación Todos los herbívoros vs Biomasa
+corr1<-cor.test(correlacion1$AbHerb,correlacion1$BiomasaLessonia, method = "spearman")
+model3
+
+cor1<-ggplot(correlacion1, aes(x=AbHerb, y= BiomasaLessonia))+ 
+  labs(x= "Abundancia de Herbivoros m-2" ,y="Biomasa Kg/m2") +
+  geom_smooth(method= "lm", aes(color="corr1"), color="black")+geom_point(aes(color=Site)) +theme_classic()
+
+```
+
+```{r correlaciones Alga-Erizo/Tegula}
+
+##Relacion tegulas
+Tegula<-Herbivoros %>% filter(Species=="Tegula tridentata") 
+Tegula$Abun<-as.numeric(Tegula$Abun)
+TegQuad<- Tegula %>% group_by(Site, Transect, Replicate) %>% summarise(AbTeg= sum(Abun))
+
+##uno las bases
+correlacion2<- AlgaQuad %>% full_join(TegQuad) %>% 
+  mutate_at(c(5:6), ~replace(., is.na(.), 0))
+corr2<-cor.test(correlacion2$AbTeg,correlacion2$BiomasaLessonia, method = "spearman")
+
+cor2<-ggplot(correlacion2, aes(x=AbTeg, y= BiomasaLessonia))+ 
+  labs(x= "Abundancia de Tegula m-2" ,y="Biomasa Kg/m2") +
+  geom_smooth(method= "lm", aes(color="corr2"), color="black")+geom_point(aes(color=Site))+ theme_classic()
+
+
+##Relacion erizos
+Erizo<-Herbivoros %>% filter(Species=="Tetrapygus niger") 
+Erizo$Abun<-as.numeric(Erizo$Abun)
+EriQuad<- Erizo %>% group_by(Site, Transect, Replicate) %>% summarise(AbEri= sum(Abun))
+
+  
+##uno las bases y saco 2   outliers
+correlacion3<- Alga %>% full_join(EriQuad) %>% mutate_at(c(5:6), ~replace(., is.na(.), 0))
+corr3<-cor.test(correlacion3$AbEri,correlacion3$BiomasaLessonia, method = "spearman")
+
+cor3<-ggplot(correlacion3, aes(x=AbEri, y= BiomasaLessonia))+ 
+  labs(x= "Abundancia de Erizo m-2" ,y="Biomasa Kg/m2") +
+  geom_smooth(method= "lm", aes(color="corr3"), color="black")+geom_point(aes(color=Site))+  ylim(0,30)+ theme_classic()
+
+##Panel de gráficos
+grid.arrange(cor1, cor2, cor3, ncol=1)
+
+
+```
+
+
+##Biomasa y Temperatura
+###Datos Lessonia Quintay 
+
+```{r Biomasa Quintay}
+##seleccioné todas los sitios muestreados en la localidad de Quintay
+Quintay1217<-Alldata %>% filter(Site=="QuintayOA" | Site=="Quintay exposed"| Site=="QuintayAMERB") %>% mutate(Group= rep("Macroalga parda", times=length(Series)))
+##selecciono sólo QuintayAMERB
+Quintay1819<-Ltrabeculata %>%  filter(Site=="QuintayAMERB", Year!="2019" | Transect!="1") 
+Quintay1219<-rbind(Quintay1217,Quintay1819)
+
+QuiAMERBquad<- Quintay1219 %>% filter(Site=="QuintayAMERB") %>% group_by(Year, Site, Date, Latitude, Longitude, Transect, Station, Replicate) %>% summarise(Biomasa= sum(Biomass))
+
+QuiAMERBquad$Year<-as.numeric(QuiAMERBquad$Year)
+
+QuintayYear<-QuiAMERBquad %>% group_by(Year,Latitude) %>% summarise(Biomasam2=mean(Biomasa), se=sd(Biomasa)/sqrt(length(Biomasa)))
+
+
+QuintayPlot<-ggplot(QuiAMERBquad, aes(x=Year, y=Biomasa)) + geom_point() + stat_smooth(method = "lm") + labs(x= "Años" ,y="Biomasa Kg/m2")+ggtitle('Biomasa Lessonia trabeculata Quintay(2012-2019)')+ theme_classic()
+   
+QuintayPlotMean<-ggplot(QuintayYear, aes(x=Year, y=Biomasam2)) + geom_point() + labs(x= "Años" ,y="Biomasa Kg/m2")+ggtitle('Biomasa Lessonia trabeculata Quintay(2012-2019)')+ theme_classic()+ geom_errorbar(aes(ymin=Biomasam2-se, ymax= Biomasam2+se))
+
+```
+###Datos Temperatura
+```{r}
+library(lubridate)
+Quintay<-read.csv("TemperaturaQuintay.csv", dec = ",") %>% unite(fecha, c(2:4), sep = "-") %>% dplyr::group_by(fecha) %>% summarise(Temperatura=mean(Temperatura))
+meanYears<-Quintay %>% summarise(meanT=mean(Temperatura), sd=sd(Temperatura))
+
+```
+
+##Biomasa y morfología
+```{r morfoLess}
+
+#hare los analisis con la info 
+Quad18<- Quad1819 %>% filter(Year=="2018")
+
+##HISTOGRAMA DE LA ESTRUCTURA DE TALLAS POR SITIO
+hist<-ggplot(data = MORFO) +
+    geom_histogram(aes(x = Size), bins = 3, colour = "black", fill = "white", stat="count") + theme_classic()+facet_wrap(~ Site)
+##HISTOGRAMA DE LA ESTRUCTURA DE TALLAS (estipes) POR SITIO
+stipesOL<- MORFO %>% filter(Stipes < 20)
+
+histSTIPES<-ggplot(data = stipesOL) +
+    geom_histogram(aes(x = Stipes), bins = 3, colour = "black", fill = "white", stat="count") + theme_classic()+facet_wrap(~ Site)
+
+library(vegan)
+library(MVA)
+library(tidyr)
+##PCA morfologia 2018
+MORFO<-Quad18 %>% select(Size, Stipes, Length, Depth, Biomassm2, Abm2) %>% filter(!Size== 0, Stipes!="NaN", Length!="NaN", Depth!="NaN") 
+pcaMORFO<-MORFO[,6:11]
+
+pcaMORFO$Size<-as.numeric(MORFO$Size)
+MORFO$Stipes<-as.numeric(MORFO$Stipes)
+MORFO$Length<-as.numeric(MORFO$Length)
+MORFO$Depth<-as.numeric(MORFO$Depth)
+MORFO$Length<-as.numeric(MORFO$Length)
+
+
+
+pcaMORFO<- prcomp(na.omit(pcaMORFO),
+                        center = TRUE,
+                        scale. = TRUE,
+                        na.action=na.omit)
+print(pcaMORFO)
+plot(pcaMORFO , type = "l")
+summary(pcaMORFO)
+biplot(pcaMORFO)
+```
+
